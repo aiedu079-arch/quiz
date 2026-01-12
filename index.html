@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>초6 세계 수도 퀴즈</title>
+    <style>
+        body { font-family: 'Nanum Gothic', sans-serif; text-align: center; background-color: #f0f8ff; }
+        #game-container { max-width: 600px; margin: 50px auto; background: white; padding: 20px; border-radius: 15px; shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        button { padding: 10px 20px; font-size: 18px; cursor: pointer; border-radius: 8px; border: none; background: #4CAF50; color: white; margin: 5px; }
+        .option-btn { width: 80%; display: block; margin: 10px auto; background: #2196F3; }
+        #timer { font-size: 20px; color: #ff4500; font-weight: bold; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="start-screen">
+        <h1>지도 박사! 세계 수도 퀴즈</h1>
+        <p>10문제를 가장 빠르게 풀어보세요!</p>
+        <button onclick="startGame()">시작하기</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div id="timer">시간: 0.00초</div>
+        <h2 id="question-num">문제 1</h2>
+        <h3 id="country-name">국가명</h3>
+        <div id="options">
+            </div>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2>게임 종료!</h2>
+        <p id="final-score"></p>
+        <p id="final-time"></p>
+        <input type="text" id="nickname" placeholder="닉네임 입력">
+        <button onclick="saveRanking()">기록 저장</button>
+        <hr>
+        <h3>🏆 실시간 랭킹</h3>
+        <table id="rank-table">
+            <thead>
+                <tr><th>순위</th><th>이름</th><th>점수</th><th>시간</th></tr>
+            </thead>
+            <tbody id="rank-list"></tbody>
+        </table>
+        <button onclick="location.reload()">다시 하기</button>
+    </div>
+</div>
+
+<script>
+    // 6학년 수준 문제 데이터 (스프레드시트에서 가져올 데이터 형식)
+    const quizData = [
+        {country: "대한민국", capital: "서울", options: ["서울", "부산", "제주", "인천"]},
+        {country: "일본", capital: "도쿄", options: ["오사카", "교토", "도쿄", "후쿠오카"]},
+        {country: "미국", capital: "워싱턴 D.C.", options: ["뉴욕", "로스앤젤레스", "시카고", "워싱턴 D.C."]},
+        {country: "프랑스", capital: "파리", options: ["파리", "리옹", "마르세유", "베를린"]},
+        {country: "영국", capital: "런던", options: ["맨체스터", "런던", "리버풀", "에든버러"]},
+        {country: "중국", capital: "베이징", options: ["상하이", "홍콩", "광저우", "베이징"]},
+        {country: "독일", capital: "베를린", options: ["뮌헨", "베를린", "함부르크", "프랑크푸르트"]},
+        {country: "브라질", capital: "브라질리아", options: ["리우데자네이루", "상파울루", "브라질리아", "아르헨티나"]},
+        {country: "이탈리아", capital: "로마", options: ["베네치아", "밀라노", "나폴리", "로마"]},
+        {country: "베트남", capital: "하노이", options: ["호치민", "다낭", "하노이", "후에"]}
+    ];
+
+    let currentIdx = 0;
+    let score = 0;
+    let startTime;
+    let timerInterval;
+    let finalElapsedTime;
+
+    function startGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        startTime = Date.now();
+        timerInterval = setInterval(updateTimer, 10);
+        showQuestion();
+    }
+
+    function updateTimer() {
+        let now = Date.now();
+        finalElapsedTime = ((now - startTime) / 1000).toFixed(2);
+        document.getElementById('timer').innerText = `시간: ${finalElapsedTime}초`;
+    }
+
+    function showQuestion() {
+        if (currentIdx >= 10) {
+            endGame();
+            return;
+        }
+        let q = quizData[currentIdx];
+        document.getElementById('question-num').innerText = `문제 ${currentIdx + 1}/10`;
+        document.getElementById('country-name').innerText = `${q.country}의 수도는 어디일까요?`;
+        
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = '';
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(answer) {
+        if (answer === quizData[currentIdx].capital) {
+            score++;
+        }
+        currentIdx++;
+        showQuestion();
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        document.getElementById('final-score').innerText = `점수: ${score * 10}점`;
+        document.getElementById('final-time').innerText = `소요 시간: ${finalElapsedTime}초`;
+        displayRankings();
+    }
+
+    function saveRanking() {
+        const nickname = document.getElementById('nickname').value;
+        if (!nickname) { alert("닉네임을 입력하세요!"); return; }
+
+        let rankings = JSON.parse(localStorage.getItem('quizRankings')) || [];
+        rankings.push({ name: nickname, score: score * 10, time: parseFloat(finalElapsedTime) });
+
+        // 정렬: 점수 높은 순 -> 시간 짧은 순
+        rankings.sort((a, b) => b.score - a.score || a.time - b.time);
+        
+        localStorage.setItem('quizRankings', JSON.stringify(rankings));
+        displayRankings();
+        document.getElementById('nickname').value = '';
+        alert("기록이 저장되었습니다!");
+    }
+
+    function displayRankings() {
+        const rankings = JSON.parse(localStorage.getItem('quizRankings')) || [];
+        const list = document.getElementById('rank-list');
+        list.innerHTML = '';
+        rankings.slice(0, 5).forEach((rank, index) => {
+            list.innerHTML += `<tr><td>${index + 1}</td><td>${rank.name}</td><td>${rank.score}</td><td>${rank.time}s</td></tr>`;
+        });
+    }
+</script>
+
+</body>
+</html>
